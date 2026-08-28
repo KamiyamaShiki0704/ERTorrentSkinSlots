@@ -1,16 +1,22 @@
 # Third-party notices
 
-This repository vendors selected crates from
-[`eldenring-rs` / FromSoftware.rs](https://github.com/vswarte/eldenring-rs)
-version 0.14.0 under `vendor/` so the game bindings used by the DLL remain
-reviewable and reproducible.
+ER Torrent Skin Slots depends on selected crates from
+[`eldenring-rs` / FromSoftware.rs](https://github.com/vswarte/eldenring-rs):
 
-Those vendored crates are available under the author's choice of:
+- `eldenring` 0.14.0;
+- `fromsoftware-shared` 0.14.0, including its transitive workspace crates.
 
-- Apache License, Version 2.0 (`vendor/LICENSE-ASL2`); or
-- MIT License (`vendor/LICENSE-MIT`).
+Cargo fetches these crates from the immutable upstream commit
+[`eae96dfec94fd9cf6f9d24813c8d08f72019f243`](https://github.com/vswarte/eldenring-rs/commit/eae96dfec94fd9cf6f9d24813c8d08f72019f243),
+which includes the ELDEN RING 1.17 update. No FromSoftware.rs source is vendored
+in this repository.
 
-The vendored source and its license texts remain the work of their respective
+FromSoftware.rs is available under the author's choice of:
+
+- [Apache License, Version 2.0](https://github.com/vswarte/eldenring-rs/blob/eae96dfec94fd9cf6f9d24813c8d08f72019f243/LICENSE-ASL2); or
+- [MIT License](https://github.com/vswarte/eldenring-rs/blob/eae96dfec94fd9cf6f9d24813c8d08f72019f243/LICENSE-MIT).
+
+The dependency source and its license texts remain the work of their respective
 authors. The root `LICENSE` applies to ER Torrent Skin Slots itself and does not
 replace any third-party license.
 

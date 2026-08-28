@@ -280,14 +280,17 @@ Release DLL 位于：
 target/x86_64-pc-windows-msvc/release/er_torrent_skin_slots.dll
 ```
 
-仓库内的 `vendor/` 保存构建所需的 FromSoftware Rust bindings；其余 Rust 依赖由
-Cargo 根据 `Cargo.lock` 获取。
+FromSoftware.rs bindings 不保存在本仓库中。Cargo 会从
+[`vswarte/eldenring-rs`](https://github.com/vswarte/eldenring-rs) 获取它们，并固定到
+包含 ELDEN RING 1.17 支持的提交
+[`eae96dfec94fd9cf6f9d24813c8d08f72019f243`](https://github.com/vswarte/eldenring-rs/commit/eae96dfec94fd9cf6f9d24813c8d08f72019f243)。
+首次构建需要网络连接；之后 Cargo 可使用本机缓存。`Cargo.lock` 还会记录该提交的
+精确来源，因而不会随上游 `main` 分支变化。
 
 ## 仓库结构
 
 ```text
 ├─ src/                         DLL、配置、Hook 与实验网络代码
-├─ vendor/                      FromSoftware Rust bindings 及其许可证
 ├─ Cargo.toml
 ├─ Cargo.lock
 ├─ er_torrent_skin_slots.ini    可直接修改的默认目录
@@ -299,6 +302,5 @@ Cargo 根据 `Cargo.lock` 获取。
 
 ## License
 
-本项目代码以 [MIT License](LICENSE) 发布。`vendor/` 中的第三方代码保留其原始
-许可，详情见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 以及该目录内的
-许可证文件。
+本项目代码以 [MIT License](LICENSE) 发布。Cargo 获取的第三方依赖保留其原始
+许可，详情见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

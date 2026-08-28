@@ -321,14 +321,19 @@ The release DLL is written to:
 target/x86_64-pc-windows-msvc/release/er_torrent_skin_slots.dll
 ```
 
-`vendor/` contains the FromSoftware Rust bindings required by this project.
-Cargo obtains the remaining Rust dependencies according to `Cargo.lock`.
+The FromSoftware.rs bindings are not vendored in this repository. Cargo fetches
+them from
+[`vswarte/eldenring-rs`](https://github.com/vswarte/eldenring-rs) at the exact
+ELDEN RING 1.17-compatible commit
+[`eae96dfec94fd9cf6f9d24813c8d08f72019f243`](https://github.com/vswarte/eldenring-rs/commit/eae96dfec94fd9cf6f9d24813c8d08f72019f243).
+The first build therefore requires network access; subsequent builds can use
+Cargo's local cache. `Cargo.lock` records the same immutable revision, so builds
+do not follow changes to upstream `main`.
 
 ## Repository layout
 
 ```text
 ├─ src/                         DLL, configuration, hooks, and experimental network code
-├─ vendor/                      FromSoftware Rust bindings and their licenses
 ├─ Cargo.toml
 ├─ Cargo.lock
 ├─ er_torrent_skin_slots.ini    Editable shipped catalog
@@ -341,6 +346,5 @@ Cargo obtains the remaining Rust dependencies according to `Cargo.lock`.
 ## License
 
 ER Torrent Skin Slots is released under the [MIT License](LICENSE). Third-party
-code under `vendor/` retains its original licensing; see
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the license files in that
-directory.
+dependencies fetched by Cargo retain their original licensing; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
