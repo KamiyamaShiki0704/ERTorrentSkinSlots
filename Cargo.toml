@@ -1,0 +1,69 @@
+[workspace]
+resolver = "2"
+members = [
+    ".",
+    "vendor/crates/shared",
+    "vendor/crates/shared/macros",
+    "vendor/crates/shared/stl",
+    "vendor/crates/eldenring",
+]
+
+[workspace.package]
+version = "0.14.0"
+edition = "2024"
+repository = "https://github.com/vswarte/eldenring-rs"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+fromsoftware-shared = { path = "vendor/crates/shared", version = "0.14.0", package = "fromsoftware-shared" }
+fromsoftware-shared-macros = { path = "vendor/crates/shared/macros", version = "0.14.0", package = "fromsoftware-shared-macros" }
+fromsoftware-shared-stl = { path = "vendor/crates/shared/stl", version = "0.14.0", package = "fromsoftware-shared-stl" }
+eldenring = { path = "vendor/crates/eldenring", version = "0.14.0", package = "eldenring" }
+thiserror = "1"
+glam = ">= 0.30"
+pelite = "0.10"
+vtable-rs = "0.1.4"
+bitfield = "0.19.2"
+bitflags = "2.11.0"
+encoding_rs = "0.8.35"
+num_enum = "0.7"
+
+[workspace.dependencies.windows]
+version = "0.61"
+features = [
+    "Win32_Foundation",
+    "Win32_System_Kernel",
+    "Win32_System_Threading",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_UI_Input_KeyboardAndMouse",
+]
+
+[package]
+name = "er-torrent-skin-slots"
+version = "0.1.0"
+edition = "2024"
+description = "Configurable true expansion slots for Elden Ring Torrent appearances"
+repository = "https://github.com/KamiyamaShiki0704/ERTorrentSkinSlots"
+readme = "README.md"
+license = "MIT"
+publish = false
+
+[lib]
+name = "er_torrent_skin_slots"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+eldenring.workspace = true
+fromsoftware-shared.workspace = true
+ilhook = { version = "2.3.0", features = ["x64"] }
+pelite.workspace = true
+windows.workspace = true
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+opt-level = "z"

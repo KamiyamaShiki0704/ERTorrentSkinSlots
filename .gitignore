@@ -1,0 +1,17 @@
+# Local build outputs and reverse-engineering work products
+/build/
+/target/
+/Saved/
+/Scripts/
+
+# Editor-local metadata
+/.idea/
+/.vscode/
+
+# Generated binaries, logs, and OS metadata
+*.dll
+*.pdb
+*.log
+*.bak
+.DS_Store
+Thumbs.db
