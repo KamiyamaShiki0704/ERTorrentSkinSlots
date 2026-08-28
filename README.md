@@ -1,5 +1,7 @@
 # ER Torrent Skin Slots
 
+[简体中文](README.md) | [English](README_EN.md)
+
 一个面向《ELDEN RING》1.17 的灵马外观扩展槽位 DLL。它绕过游戏原本只能保存
 `0..3` 四个外观选择值的限制，并通过 INI 目录把额外的选择器映射到事件旗标和
 `NpcParam` 外观行。
@@ -289,6 +291,8 @@ Cargo 根据 `Cargo.lock` 获取。
 ├─ Cargo.toml
 ├─ Cargo.lock
 ├─ er_torrent_skin_slots.ini    可直接修改的默认目录
+├─ README.md                     中文使用说明
+├─ README_EN.md                  English documentation
 ├─ LICENSE                      本项目的 MIT License
 └─ THIRD_PARTY_NOTICES.md       第三方组件说明
 ```
