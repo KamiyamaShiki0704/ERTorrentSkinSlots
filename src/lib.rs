@@ -67,7 +67,7 @@ fn initialize(hmodule: usize) {
         .flatten();
     logging::initialize(log_path);
     logging::write(format!(
-        "loaded enabled={} profile=WW-2.7.0.0 slots={} catalog_hash=0x{:016X} network_mode={:?} packet_type={} heartbeat_frames={}",
+        "loaded enabled={} slots={} catalog_hash=0x{:016X} network_mode={:?} packet_type={} heartbeat_frames={}",
         config.enabled,
         config.catalog.slots().len(),
         config.catalog.hash(),
@@ -113,7 +113,7 @@ fn initialize(hmodule: usize) {
             }
         }
         NetworkMode::On => logging::write(
-            "network_mode=on rejected in build 0.1.0: no runtime-proven Seamless packet/identity profile; local hooks remain active",
+            "network_mode=on rejected: no runtime-proven Seamless packet/identity profile; local hooks remain active",
         ),
     }
 }

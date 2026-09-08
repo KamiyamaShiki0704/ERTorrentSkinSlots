@@ -79,7 +79,7 @@ checksum = "c2ea6706d74fca54e15f1d40b5cf7fe7f764aaec61352a9fcec58fe27e042fc8"
 [[package]]
 name = "eldenring"
 version = "0.14.0"
-source = "git+https://github.com/vswarte/eldenring-rs.git?rev=eae96dfec94fd9cf6f9d24813c8d08f72019f243#eae96dfec94fd9cf6f9d24813c8d08f72019f243"
+source = "git+https://github.com/KamiyamaShiki0704/fromsoftware-rs.git?rev=7d4fdd66eda1a35284c170feb4b07b058c005f8f#7d4fdd66eda1a35284c170feb4b07b058c005f8f"
 dependencies = [
  "bitfield",
  "bitflags",
@@ -111,7 +111,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "er-torrent-skin-slots"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "eldenring",
  "fromsoftware-shared",
@@ -136,7 +136,7 @@ dependencies = [
 [[package]]
 name = "fromsoftware-shared"
 version = "0.14.0"
-source = "git+https://github.com/vswarte/eldenring-rs.git?rev=eae96dfec94fd9cf6f9d24813c8d08f72019f243#eae96dfec94fd9cf6f9d24813c8d08f72019f243"
+source = "git+https://github.com/KamiyamaShiki0704/fromsoftware-rs.git?rev=7d4fdd66eda1a35284c170feb4b07b058c005f8f#7d4fdd66eda1a35284c170feb4b07b058c005f8f"
 dependencies = [
  "bitflags",
  "from-singleton",
@@ -152,7 +152,7 @@ dependencies = [
 [[package]]
 name = "fromsoftware-shared-macros"
 version = "0.14.0"
-source = "git+https://github.com/vswarte/eldenring-rs.git?rev=eae96dfec94fd9cf6f9d24813c8d08f72019f243#eae96dfec94fd9cf6f9d24813c8d08f72019f243"
+source = "git+https://github.com/KamiyamaShiki0704/fromsoftware-rs.git?rev=7d4fdd66eda1a35284c170feb4b07b058c005f8f#7d4fdd66eda1a35284c170feb4b07b058c005f8f"
 dependencies = [
  "inflections",
  "proc-macro2",
@@ -163,7 +163,7 @@ dependencies = [
 [[package]]
 name = "fromsoftware-shared-stl"
 version = "0.14.0"
-source = "git+https://github.com/vswarte/eldenring-rs.git?rev=eae96dfec94fd9cf6f9d24813c8d08f72019f243#eae96dfec94fd9cf6f9d24813c8d08f72019f243"
+source = "git+https://github.com/KamiyamaShiki0704/fromsoftware-rs.git?rev=7d4fdd66eda1a35284c170feb4b07b058c005f8f#7d4fdd66eda1a35284c170feb4b07b058c005f8f"
 
 [[package]]
 name = "fxhash"

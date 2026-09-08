@@ -3,8 +3,8 @@ resolver = "2"
 members = ["."]
 
 [workspace.dependencies]
-fromsoftware-shared = { git = "https://github.com/vswarte/eldenring-rs.git", rev = "eae96dfec94fd9cf6f9d24813c8d08f72019f243", version = "0.14.0", package = "fromsoftware-shared" }
-eldenring = { git = "https://github.com/vswarte/eldenring-rs.git", rev = "eae96dfec94fd9cf6f9d24813c8d08f72019f243", version = "0.14.0", package = "eldenring" }
+fromsoftware-shared = { git = "https://github.com/KamiyamaShiki0704/fromsoftware-rs.git", rev = "7d4fdd66eda1a35284c170feb4b07b058c005f8f", version = "0.14.0", package = "fromsoftware-shared" }
+eldenring = { git = "https://github.com/KamiyamaShiki0704/fromsoftware-rs.git", rev = "7d4fdd66eda1a35284c170feb4b07b058c005f8f", version = "0.14.0", package = "eldenring" }
 pelite = "0.10"
 
 [workspace.dependencies.windows]
@@ -21,7 +21,7 @@ features = [
 
 [package]
 name = "er-torrent-skin-slots"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Configurable true expansion slots for Elden Ring Torrent appearances"
 repository = "https://github.com/KamiyamaShiki0704/ERTorrentSkinSlots"

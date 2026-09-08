@@ -7,8 +7,8 @@ ELDEN RING 1.17. It works around the game's original four-value (`0..3`)
 appearance selector and maps additional selectors to event flags and appearance
 `NpcParam` rows through an INI catalog.
 
-> Currently supported: WW `eldenring.exe` product version `2.7.0.0` (game
-> version 1.17).
+> Currently supported: WW `eldenring.exe` product versions `2.7.0.0` / `2.7.1.0` (game
+> versions 1.17 / 1.17.1).
 >
 > This is an unofficial modding tool and is not affiliated with FromSoftware,
 > Bandai Namco, or Mod Engine 2. Disable Easy Anti-Cheat and use it only offline
@@ -43,6 +43,12 @@ Each mod author remains in control of the actual mounts, menu, game data, and
 resources.
 
 ## Validation status
+
+- v0.1.1 adds WW 1.17.1 (EXE 2.7.1.0) support with an updated appearance
+  resolver address, selector-refresh signature, and pinned compatible fsrs fork.
+  Static EXE checks, safety-gate corruption tests, and compilation pass.
+  In-game summoning, switching, and save reload on 1.17.1 still require manual
+  validation. The separate 1.17 profile is retained.
 
 - Local use: selectors `4`, `5`, and `6` from the shipped catalog have passed
   in-game testing with three additional mounts.
@@ -323,9 +329,9 @@ target/x86_64-pc-windows-msvc/release/er_torrent_skin_slots.dll
 
 The FromSoftware.rs bindings are not vendored in this repository. Cargo fetches
 them from
-[`vswarte/eldenring-rs`](https://github.com/vswarte/eldenring-rs) at the exact
-ELDEN RING 1.17-compatible commit
-[`eae96dfec94fd9cf6f9d24813c8d08f72019f243`](https://github.com/vswarte/eldenring-rs/commit/eae96dfec94fd9cf6f9d24813c8d08f72019f243).
+[`KamiyamaShiki0704/fromsoftware-rs`](https://github.com/KamiyamaShiki0704/fromsoftware-rs) at the exact
+ELDEN RING 1.17 / 1.17.1-compatible commit
+[`7d4fdd66eda1a35284c170feb4b07b058c005f8f`](https://github.com/KamiyamaShiki0704/fromsoftware-rs/commit/7d4fdd66eda1a35284c170feb4b07b058c005f8f).
 The first build therefore requires network access; subsequent builds can use
 Cargo's local cache. `Cargo.lock` records the same immutable revision, so builds
 do not follow changes to upstream `main`.

@@ -16,6 +16,12 @@ pub const PROFILE: Er117Profile = Er117Profile {
     official_table_rva: 0x02BB_5028,
 };
 
+pub const PROFILE_1171: Er117Profile = Er117Profile {
+    name: "WW 2.7.1.0",
+    appearance_resolver_rva: 0x00D4_2420,
+    ..PROFILE
+};
+
 #[derive(Clone, Copy, Debug)]
 pub struct Er117Profile {
     pub name: &'static str,
@@ -32,6 +38,7 @@ pub struct Er117Profile {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SupportedExe {
     Ww270,
+    Ww271,
 }
 
 impl GameVersion for SupportedExe {
@@ -40,6 +47,7 @@ impl GameVersion for SupportedExe {
     fn from_lang_version(lang_id: u16, version: &str) -> Option<Self> {
         match (lang_id, version) {
             (LANG_ID_EN, "2.7.0.0") => Some(Self::Ww270),
+            (LANG_ID_EN, "2.7.1.0") => Some(Self::Ww271),
             _ => None,
         }
     }
@@ -50,13 +58,17 @@ pub fn detect() -> Result<(usize, &'static Er117Profile), String> {
         .map_err(|error| format!("GetModuleHandleA(None) failed: {error:?}"))?;
     let base = module.0 as usize;
     let image = unsafe { PeView::module(base as *const u8) };
-    SupportedExe::detect(&image)
+    let version = SupportedExe::detect(&image)
         .map_err(|error| format!("unsupported Elden Ring executable: {error}"))?;
-    validate(base)?;
-    Ok((base, &PROFILE))
+    let profile = match version {
+        SupportedExe::Ww270 => &PROFILE,
+        SupportedExe::Ww271 => &PROFILE_1171,
+    };
+    validate(base, profile)?;
+    Ok((base, profile))
 }
 
-pub fn validate(base: usize) -> Result<(), String> {
+pub fn validate(base: usize, profile: &Er117Profile) -> Result<(), String> {
     let selector_signature: &[Option<u8>] = &[
         Some(0x4C),
         Some(0x8B),
@@ -77,6 +89,34 @@ pub fn validate(base: usize) -> Result<(), String> {
         Some(0x33),
         Some(0xC4),
     ];
+    let selector_1171_signature = [
+        Some(0x40),
+        Some(0x55),
+        Some(0x48),
+        Some(0x83),
+        Some(0xEC),
+        Some(0x70),
+        Some(0x48),
+        Some(0x8B),
+        Some(0x05),
+        None,
+        None,
+        None,
+        None,
+        Some(0x48),
+        Some(0x33),
+        Some(0xC4),
+        Some(0x48),
+        Some(0x89),
+        Some(0x44),
+        Some(0x24),
+        Some(0x58),
+    ];
+    let selector_signature = if profile.name == PROFILE_1171.name {
+        &selector_1171_signature[..]
+    } else {
+        selector_signature
+    };
     let resolver_signature: &[Option<u8>] = &[
         Some(0x80),
         Some(0xF9),
@@ -147,12 +187,17 @@ pub fn validate(base: usize) -> Result<(), String> {
     ];
 
     unsafe {
-        match_pattern(base + PROFILE.selector_refresh_rva, selector_signature)
+        match_pattern(base + profile.selector_refresh_rva, selector_signature)
             .then_some(())
             .ok_or_else(|| "selector refresh signature mismatch at RVA 0xAFEEA0".to_string())?;
-        match_pattern(base + PROFILE.appearance_resolver_rva, resolver_signature)
+        match_pattern(base + profile.appearance_resolver_rva, resolver_signature)
             .then_some(())
-            .ok_or_else(|| "appearance resolver signature mismatch at RVA 0xD423B0".to_string())?;
+            .ok_or_else(|| {
+                format!(
+                    "appearance resolver signature mismatch at RVA 0x{:X}",
+                    profile.appearance_resolver_rva
+                )
+            })?;
         match_pattern(base + 0x0025_F898, pack_signature)
             .then_some(())
             .ok_or_else(|| "two-bit selector pack signature mismatch".to_string())?;
@@ -160,10 +205,10 @@ pub fn validate(base: usize) -> Result<(), String> {
             .then_some(())
             .ok_or_else(|| "two-bit selector unpack signature mismatch".to_string())?;
 
-        for call_rva in PROFILE.resolver_call_rvas {
+        for call_rva in profile.resolver_call_rvas {
             let target = direct_call_target(base, call_rva)
                 .ok_or_else(|| format!("resolver call is not E8 rel32 at RVA 0x{call_rva:X}"))?;
-            if target != base + PROFILE.appearance_resolver_rva {
+            if target != base + profile.appearance_resolver_rva {
                 return Err(format!(
                     "resolver call target mismatch at RVA 0x{call_rva:X}: 0x{target:X}"
                 ));
@@ -171,7 +216,7 @@ pub fn validate(base: usize) -> Result<(), String> {
         }
 
         let table = std::slice::from_raw_parts(
-            (base + PROFILE.official_table_rva) as *const i32,
+            (base + profile.official_table_rva) as *const i32,
             crate::catalog::OFFICIAL_APPEARANCE_IDS.len(),
         );
         if table != crate::catalog::OFFICIAL_APPEARANCE_IDS {
@@ -194,7 +239,7 @@ unsafe fn direct_call_target(base: usize, rva: usize) -> Option<usize> {
     if unsafe { *(address as *const u8) } != 0xE8 {
         return None;
     }
-    let displacement = unsafe { *((address + 1) as *const i32) } as isize;
+    let displacement = unsafe { ((address + 1) as *const i32).read_unaligned() } as isize;
     (address + 5).checked_add_signed(displacement)
 }
 
@@ -203,6 +248,64 @@ const _: () = assert!(size_of::<i32>() == 4);
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_verified_versions_are_accepted() {
+        assert_eq!(
+            SupportedExe::from_lang_version(LANG_ID_EN, "2.7.0.0"),
+            Some(SupportedExe::Ww270)
+        );
+        assert_eq!(
+            SupportedExe::from_lang_version(LANG_ID_EN, "2.7.1.0"),
+            Some(SupportedExe::Ww271)
+        );
+        assert!(SupportedExe::from_lang_version(LANG_ID_EN, "2.7.2.0").is_none());
+        assert!(SupportedExe::from_lang_version(0, "2.7.1.0").is_none());
+    }
+
+    /// Run with ER_TEST_EXE pointing to a legally installed WW executable.
+    #[test]
+    #[ignore = "requires a local Elden Ring executable"]
+    fn installed_executable_and_corruptions() {
+        use pelite::pe64::{Pe, PeFile};
+        let bytes =
+            std::fs::read(std::env::var_os("ER_TEST_EXE").expect("set ER_TEST_EXE")).unwrap();
+        let file = PeFile::from_bytes(&bytes).unwrap();
+        // PE sections can have a larger virtual size than their on-disk data.
+        let headers = file.optional_header();
+        let mut mapped = vec![0u8; headers.SizeOfImage as usize];
+        let header_size = headers.SizeOfHeaders as usize;
+        mapped[..header_size].copy_from_slice(&bytes[..header_size]);
+        for section in file.section_headers() {
+            let source = section.PointerToRawData as usize;
+            let target = section.VirtualAddress as usize;
+            let size = section.SizeOfRawData as usize;
+            mapped[target..target + size].copy_from_slice(&bytes[source..source + size]);
+        }
+        let view = PeView::from_bytes(&mapped).unwrap();
+        let profile = match SupportedExe::detect(&view).unwrap() {
+            SupportedExe::Ww270 => &PROFILE,
+            SupportedExe::Ww271 => &PROFILE_1171,
+        };
+        let base = mapped.as_ptr() as usize;
+        validate(base, profile).unwrap();
+        for offset in [
+            profile.selector_refresh_rva,
+            profile.appearance_resolver_rva,
+            profile.resolver_call_rvas[0] + 1,
+            profile.official_table_rva,
+            0x25F898,
+            0x404361,
+        ] {
+            mapped[offset] ^= 1;
+            assert!(
+                validate(base, profile).is_err(),
+                "accepted corruption at {offset:X}"
+            );
+            mapped[offset] ^= 1;
+        }
+        validate(base, profile).unwrap();
+    }
 
     #[test]
     fn profile_return_points_follow_the_three_known_calls() {

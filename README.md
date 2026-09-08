@@ -6,7 +6,7 @@
 `0..3` 四个外观选择值的限制，并通过 INI 目录把额外的选择器映射到事件旗标和
 `NpcParam` 外观行。
 
-> 当前支持：WW `eldenring.exe` 产品版本 `2.7.0.0`（游戏版本 1.17）。
+> 当前支持：WW `eldenring.exe` 产品版本 `2.7.0.0` / `2.7.1.0`（游戏版本 1.17 / 1.17.1）。
 >
 > 本项目是非官方 Mod 工具，与 FromSoftware、Bandai Namco 或 Mod Engine 2
 > 无关联。请关闭 Easy Anti-Cheat 并仅在离线或明确允许 Mod 的环境中使用；不要
@@ -34,6 +34,10 @@ DLL **不会**替使用者完成以下内容：
 Mod 作者自行组织。
 
 ## 已验证状态
+
+- v0.1.1 增加 WW 1.17.1（EXE 2.7.1.0）适配：更新外观解析地址与选择刷新特征码，
+  并固定到支持新版的 fsrs fork 提交。已通过新 EXE 静态检查、安全门破坏测试和编译；
+  1.17.1 的游戏内召唤、切换与读档仍待人工验收。保留 1.17 的独立版本配置。
 
 - 本地使用：已用默认目录中的三个新增槽位（selector `4`、`5`、`6`）完成游戏内
   人工测试。
@@ -281,9 +285,9 @@ target/x86_64-pc-windows-msvc/release/er_torrent_skin_slots.dll
 ```
 
 FromSoftware.rs bindings 不保存在本仓库中。Cargo 会从
-[`vswarte/eldenring-rs`](https://github.com/vswarte/eldenring-rs) 获取它们，并固定到
-包含 ELDEN RING 1.17 支持的提交
-[`eae96dfec94fd9cf6f9d24813c8d08f72019f243`](https://github.com/vswarte/eldenring-rs/commit/eae96dfec94fd9cf6f9d24813c8d08f72019f243)。
+[`KamiyamaShiki0704/fromsoftware-rs`](https://github.com/KamiyamaShiki0704/fromsoftware-rs) 获取它们，并固定到
+包含 ELDEN RING 1.17 / 1.17.1 支持的提交
+[`7d4fdd66eda1a35284c170feb4b07b058c005f8f`](https://github.com/KamiyamaShiki0704/fromsoftware-rs/commit/7d4fdd66eda1a35284c170feb4b07b058c005f8f)。
 首次构建需要网络连接；之后 Cargo 可使用本机缓存。`Cargo.lock` 还会记录该提交的
 精确来源，因而不会随上游 `main` 分支变化。
 
