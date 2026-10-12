@@ -21,7 +21,7 @@ features = [
 
 [package]
 name = "er-torrent-skin-slots"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "Configurable true expansion slots for Elden Ring Torrent appearances"
 repository = "https://github.com/KamiyamaShiki0704/ERTorrentSkinSlots"

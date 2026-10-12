@@ -12,6 +12,10 @@ pub fn initialize(path: Option<PathBuf>) {
     let _ = LOG_PATH.set(path);
 }
 
+pub fn enabled() -> bool {
+    LOG_PATH.get().is_some_and(Option::is_some)
+}
+
 pub fn write(message: impl AsRef<str>) {
     let Some(path) = LOG_PATH.get().and_then(Option::as_ref) else {
         return;

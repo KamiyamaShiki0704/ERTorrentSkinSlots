@@ -14,11 +14,14 @@ pub const PROFILE: Er117Profile = Er117Profile {
     remote_resolver_return_rva: 0x0040_43EF,
     resolver_call_rvas: [0x0040_34AD, 0x0040_43EA, 0x0050_D73B],
     official_table_rva: 0x02BB_5028,
+    character_classifier_rva: 0x003E_5EA0,
+    appearance_classifier_rva: 0x00D4_30B0,
 };
 
 pub const PROFILE_1171: Er117Profile = Er117Profile {
     name: "WW 2.7.1.0",
     appearance_resolver_rva: 0x00D4_2420,
+    appearance_classifier_rva: 0x00D4_3120,
     ..PROFILE
 };
 
@@ -33,6 +36,8 @@ pub struct Er117Profile {
     pub remote_resolver_return_rva: usize,
     pub resolver_call_rvas: [usize; 3],
     pub official_table_rva: usize,
+    pub character_classifier_rva: usize,
+    pub appearance_classifier_rva: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -187,6 +192,32 @@ pub fn validate(base: usize, profile: &Er117Profile) -> Result<(), String> {
     ];
 
     unsafe {
+        let character = [
+            0x8B, 0x01, 0x3D, 0x40, 0x1F, 0, 0, 0x74, 0x0D, 0x05, 0xBE, 0xE0, 0xFF, 0xFF, 0x83,
+            0xF8, 0x03, 0x76, 0x03, 0x32, 0xC0, 0xC3, 0xB0, 0x01, 0xC3,
+        ];
+        let appearance = [
+            0x32, 0xD2, 0x48, 0x83, 0x39, 0, 0x74, 0x1C, 0x8B, 0x41, 0x08, 0x2D, 0x20, 0x02, 0xC5,
+            0x04, 0x0F, 0xB6, 0xCA, 0x3D, 0x30, 0x75, 0, 0, 0xBA, 0x01, 0, 0, 0, 0x0F, 0x46, 0xCA,
+            0x0F, 0xB6, 0xC1, 0xC3, 0x0F, 0xB6, 0xC2, 0xC3,
+        ];
+        for (label, rva, expected) in [
+            (
+                "character classifier",
+                profile.character_classifier_rva,
+                &character[..],
+            ),
+            (
+                "appearance classifier",
+                profile.appearance_classifier_rva,
+                &appearance[..],
+            ),
+        ] {
+            let actual = std::slice::from_raw_parts((base + rva) as *const u8, expected.len());
+            if actual != expected {
+                return Err(format!("{label} signature mismatch at RVA 0x{rva:X}"));
+            }
+        }
         match_pattern(base + profile.selector_refresh_rva, selector_signature)
             .then_some(())
             .ok_or_else(|| "selector refresh signature mismatch at RVA 0xAFEEA0".to_string())?;
@@ -292,6 +323,8 @@ mod tests {
         for offset in [
             profile.selector_refresh_rva,
             profile.appearance_resolver_rva,
+            profile.character_classifier_rva,
+            profile.appearance_classifier_rva,
             profile.resolver_call_rvas[0] + 1,
             profile.official_table_rva,
             0x25F898,

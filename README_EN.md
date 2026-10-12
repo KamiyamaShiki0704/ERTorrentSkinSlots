@@ -24,6 +24,9 @@ The DLL is responsible for:
 - selecting the local slot from the event flag assigned to each catalog entry;
 - mapping that selector to an appearance `NpcParam` ID when Torrent is first
   created and its appearance is resolved;
+- extending native character recognition and mount
+  physics recognition from the INI catalog, so configured mounts enter the
+  original mounted-animation, cleanup, and physics branches;
 - validating the executable version and critical code signatures before
   installing any hook;
 - logging initialization, selection changes, and appearance resolution beside
@@ -44,11 +47,26 @@ resources.
 
 ## Validation status
 
+- v0.1.2 fixes configured mounts being excluded from native character recognition
+  and mount physics initialization. On 2026-10-13, the project owner confirmed
+  both reported c8008 issues were fixed in a local 1.17.1 mod without Seamless
+  Co-op: small-ledge traversal, and a disappearing horse / stuck mounted player
+  after falling, quitting to title, continuing, and jumping. This gameplay
+  acceptance covers the same repair logic in `0.1.2-test.1`; v0.1.2 only removes
+  the test-version suffix and updates documentation, without changing the fix.
+  Automated tests execute actual 1.17.1 EXE code before and after the hooks,
+  covering recognition, animation selection, physics initialization, and hook
+  rollback. The old 1.17 EXE was not regression-tested in this round, and this
+  local acceptance does not establish multiplayer compatibility. The INI format is
+  unchanged; recognition follows configured extended slots, not three fixed IDs.
+  With `log_enabled = true`, up to 64 changed recovery-boundary snapshots are
+  logged. These are read-only; no saved position, HP, flags, or link pointers are
+  rewritten.
+
 - v0.1.1 adds WW 1.17.1 (EXE 2.7.1.0) support with an updated appearance
   resolver address, selector-refresh signature, and pinned compatible fsrs fork.
-  Static EXE checks, safety-gate corruption tests, and compilation pass.
-  In-game summoning, switching, and save reload on 1.17.1 still require manual
-  validation. The separate 1.17 profile is retained.
+  Static EXE checks, safety-gate corruption tests, and compilation pass. The
+  separate 1.17 profile is retained; see v0.1.2 for the new mount behavior fixes.
 
 - Local use: selectors `4`, `5`, and `6` from the shipped catalog have passed
   in-game testing with three additional mounts.

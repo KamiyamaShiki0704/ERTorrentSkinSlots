@@ -14,9 +14,11 @@ pub mod config;
 mod game_network;
 mod hooks;
 mod logging;
+mod mount_identity;
 pub mod network;
 pub mod profile;
 pub mod protocol;
+mod recovery_trace;
 pub mod state;
 
 use config::{Config, NetworkMode};
@@ -67,7 +69,8 @@ fn initialize(hmodule: usize) {
         .flatten();
     logging::initialize(log_path);
     logging::write(format!(
-        "loaded enabled={} slots={} catalog_hash=0x{:016X} network_mode={:?} packet_type={} heartbeat_frames={}",
+        "loaded version={} enabled={} slots={} catalog_hash=0x{:016X} network_mode={:?} packet_type={} heartbeat_frames={}",
+        env!("CARGO_PKG_VERSION"),
         config.enabled,
         config.catalog.slots().len(),
         config.catalog.hash(),
