@@ -19,6 +19,7 @@ pub mod network;
 pub mod profile;
 pub mod protocol;
 mod recovery_trace;
+mod sdk;
 pub mod state;
 
 use config::{Config, NetworkMode};
@@ -27,14 +28,18 @@ use config::{Config, NetworkMode};
 ///
 /// Windows calls this entry point while loading the DLL. It must not be invoked manually.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn DllMain(hmodule: usize, reason: u32, _reserved: usize) -> bool {
+pub unsafe extern "system" fn DllMain(
+    hmodule: usize,
+    reason: u32,
+    _reserved: *mut c_void,
+) -> windows::core::BOOL {
     const DLL_PROCESS_ATTACH: u32 = 1;
     if reason != DLL_PROCESS_ATTACH {
-        return true;
+        return windows::core::BOOL(1);
     }
 
     thread::spawn(move || initialize(hmodule));
-    true
+    windows::core::BOOL(1)
 }
 
 fn initialize(hmodule: usize) {

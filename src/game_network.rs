@@ -1,13 +1,5 @@
-use std::{collections::HashSet, ptr, time::Duration};
-
-use eldenring::{
-    cs::{
-        CSTaskGroupIndex, CSTaskImp, PlayerIns, PlayerNetworkSession, ReceivePacketAllocation,
-        ReceivedPacketReader, WorldChrMan,
-    },
-    fd4::FD4TaskData,
-};
-use fromsoftware_shared::{FromStatic, SharedTaskImpExt};
+use shikifsrs_elden_ring::TaskCallback;
+use std::collections::HashSet;
 use windows::{Win32::System::LibraryLoader::GetModuleHandleA, core::PCSTR};
 
 use crate::{
@@ -31,61 +23,55 @@ pub fn install_probe(
         );
     }
 
-    let task = CSTaskImp::wait_for_instance(Duration::from_secs(30))
-        .map_err(|_| "CSTaskImp was not available within 30 seconds".to_string())?;
     let mut sync = SyncEngine::new(catalog, packet_type, hooks::local_selector());
     let mut frame = 0u32;
     let mut first_publish = true;
     let mut last_selector = hooks::local_selector();
 
-    task.run_recurring(
-        move |_: &FD4TaskData| {
-            frame = frame.wrapping_add(1);
-            let mut adapter = GameNetworkAdapter;
-            let selector = hooks::local_selector();
+    let callback = TaskCallback::new(move |_| {
+        frame = frame.wrapping_add(1);
+        let mut adapter = GameNetworkAdapter;
+        let selector = hooks::local_selector();
 
-            if selector != last_selector {
-                match sync.set_local_selector(selector, &mut adapter) {
-                    Ok(true) => logging::write(format!(
-                        "network probe published selector change selector={selector} packet_type={packet_type}"
-                    )),
-                    Ok(false) => {}
-                    Err(error) => logging::write(format!(
-                        "network probe selector publish failed: {error}"
-                    )),
+        if selector != last_selector {
+            match sync.set_local_selector(selector, &mut adapter) {
+                Ok(true) => logging::write(format!(
+                    "network probe published selector change selector={selector} packet_type={packet_type}"
+                )),
+                Ok(false) => {}
+                Err(error) => {
+                    logging::write(format!("network probe selector publish failed: {error}"))
                 }
-                last_selector = selector;
-                first_publish = false;
-            } else if first_publish || frame % heartbeat_frames == 1 {
-                match sync.publish(&mut adapter) {
-                    Ok(()) => logging::write(format!(
-                        "network probe heartbeat frame={frame} selector={selector} packet_type={packet_type}"
-                    )),
-                    Err(error) => {
-                        logging::write(format!("network probe heartbeat failed: {error}"))
+            }
+            last_selector = selector;
+            first_publish = false;
+        } else if first_publish || heartbeat_due(frame, heartbeat_frames) {
+            match sync.publish(&mut adapter) {
+                Ok(()) => logging::write(format!(
+                    "network probe heartbeat frame={frame} selector={selector} packet_type={packet_type}"
+                )),
+                Err(error) => logging::write(format!("network probe heartbeat failed: {error}")),
+            }
+            first_publish = false;
+        }
+
+        match sync.receive(&mut adapter) {
+            Ok(results) => {
+                for (peer, result) in results {
+                    match result {
+                        Ok(selector) => logging::write(format!(
+                            "network probe accepted peer={peer} selector={selector}"
+                        )),
+                        Err(reason) => logging::write(format!(
+                            "network probe rejected peer={peer} reason={reason:?}"
+                        )),
                     }
                 }
-                first_publish = false;
             }
-
-            match sync.receive(&mut adapter) {
-                Ok(results) => {
-                    for (peer, result) in results {
-                        match result {
-                            Ok(selector) => logging::write(format!(
-                                "network probe accepted peer={peer} selector={selector}"
-                            )),
-                            Err(reason) => logging::write(format!(
-                                "network probe rejected peer={peer} reason={reason:?}"
-                            )),
-                        }
-                    }
-                }
-                Err(error) => logging::write(format!("network probe receive failed: {error}")),
-            }
-        },
-        CSTaskGroupIndex::TaskLineIdx_FrpgNet_Other,
-    );
+            Err(error) => logging::write(format!("network probe receive failed: {error}")),
+        }
+    });
+    crate::sdk::register_network(callback)?;
 
     logging::write(format!(
         "network probe scheduler installed packet_type={packet_type} heartbeat_frames={heartbeat_frames}"
@@ -106,105 +92,95 @@ struct GameNetworkAdapter;
 
 impl NetworkAdapter for GameNetworkAdapter {
     type Error = String;
-
     fn broadcast(&mut self, packet_type: u8, bytes: &[u8]) -> Result<(), Self::Error> {
-        let sessions = unsafe { remote_sessions()? };
-        let Some(session) = sessions.first().copied() else {
-            return Ok(());
-        };
-        let length = u32::try_from(bytes.len())
-            .map_err(|_| "outbound packet does not fit a u32 length".to_string())?;
-        unsafe {
-            let player_session = &(*session).player_session;
-            (player_session.vftable.broadcast_packet)(
-                player_session,
-                bytes.as_ptr(),
-                length,
-                packet_type,
-            );
-        }
-        Ok(())
+        crate::sdk::with_network(|native| {
+            let sessions = unique_sessions(native.observe(4096).map_err(|e| e.to_string())?);
+            let Some(session) = sessions.first().copied() else {
+                return Ok(());
+            };
+            // SAFETY: Only the actual retained network callback, not worker/tests. Complete
+            // graph, authority and phase remain experimental caller contracts; receipt only.
+            unsafe { native.broadcast(session, packet_type, bytes) }.map_err(|e| e.to_string())?;
+            Ok(())
+        })
     }
-
     fn drain(&mut self, packet_type: u8) -> Result<Vec<InboundPacket>, Self::Error> {
-        let sessions = unsafe { remote_sessions()? };
-        let mut packets = Vec::new();
-
-        for session in sessions {
-            let peer = unsafe { (*session).remote_identity };
-            for _ in 0..MAX_PACKETS_PER_PEER_PER_FRAME {
-                let mut storage = [0u8; RECEIVE_BUFFER_SIZE];
-                let mut allocation = ReceivePacketAllocation {
-                    buffer: storage.as_mut_ptr(),
-                    size: storage.len(),
-                };
-                let mut reader = ReceivedPacketReader {
-                    buffer: ptr::null_mut(),
-                    allocation_size: 0,
-                    received_size: 0,
-                };
-
-                unsafe {
-                    let player_session = &mut (*session).player_session;
-                    let _ = (player_session.vftable.receive_packet)(
-                        player_session,
-                        &mut allocation,
-                        &mut reader,
-                        packet_type,
-                    );
+        crate::sdk::with_network(|native| {
+            let sessions = unique_sessions(native.observe(4096).map_err(|e| e.to_string())?);
+            let mut packets = Vec::new();
+            for session in sessions {
+                for _ in 0..MAX_PACKETS_PER_PEER_PER_FRAME {
+                    // SAFETY: Same retained phase with exclusive session/transport graph;
+                    // SDK's decoded ABI owns its output buffer and checks all copy bounds.
+                    let bytes =
+                        unsafe { native.receive(session, packet_type, RECEIVE_BUFFER_SIZE) }
+                            .map_err(|e| e.to_string())?;
+                    if bytes.is_empty() {
+                        break;
+                    }
+                    packets.push(InboundPacket {
+                        peer: session.native_identifier,
+                        bytes,
+                    });
                 }
-                if reader.received_size == 0 {
-                    break;
-                }
-                if reader.received_size > RECEIVE_BUFFER_SIZE {
-                    return Err(format!(
-                        "peer {peer} reported oversized packet {} > {RECEIVE_BUFFER_SIZE}",
-                        reader.received_size
-                    ));
-                }
-
-                let source = if reader.buffer.is_null() {
-                    storage.as_ptr()
-                } else {
-                    reader.buffer.cast_const()
-                };
-                let bytes = unsafe { std::slice::from_raw_parts(source, reader.received_size) };
-                packets.push(InboundPacket {
-                    peer,
-                    bytes: bytes.to_vec(),
-                });
             }
-        }
-        Ok(packets)
+            Ok(packets)
+        })
     }
 }
-
-unsafe fn remote_sessions() -> Result<Vec<*mut PlayerNetworkSession>, String> {
-    let world = unsafe { WorldChrMan::instance_mut() }
-        .map_err(|_| "WorldChrMan is not available".to_string())?;
+fn unique_sessions(
+    sessions: Vec<shikifsrs_elden_ring::network_sessions::NetworkSessionObservation>,
+) -> Vec<shikifsrs_elden_ring::network_sessions::NetworkSessionObservation> {
     let mut identities = HashSet::new();
-    let mut sessions = Vec::new();
-
-    for player in world.player_chr_set.characters() {
-        let session = unsafe { raw_session_pointer(player) };
-        if session.is_null() {
-            continue;
-        }
-        let identity = unsafe { (*session).remote_identity };
-        if identity == 0 || !identities.insert(identity) {
-            continue;
-        }
-        sessions.push(session);
-    }
-    Ok(sessions)
+    sessions
+        .into_iter()
+        .filter(|session| {
+            session.native_identifier != 0 && identities.insert(session.native_identifier)
+        })
+        .collect()
+}
+fn heartbeat_due(frame: u32, every: u32) -> bool {
+    frame.wrapping_sub(1).is_multiple_of(every.max(1))
 }
 
-unsafe fn raw_session_pointer(player: &mut PlayerIns) -> *mut PlayerNetworkSession {
-    let owned_pointer_address =
-        ptr::addr_of_mut!(player.player_session_holder.player_network_session);
-    unsafe {
-        owned_pointer_address
-            .cast::<*mut PlayerNetworkSession>()
-            .read()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn heartbeat_keeps_original_frame_one_schedule_and_repeats_every_frame_when_interval_one() {
+        assert_eq!(
+            (1..=13)
+                .filter(|frame| heartbeat_due(*frame, 6))
+                .collect::<Vec<_>>(),
+            vec![1, 7, 13]
+        );
+        assert!((1..=12).all(|frame| heartbeat_due(frame, 1)));
+    }
+    #[test]
+    fn session_dedup_keeps_first_nonzero_opaque_identifier() {
+        use shikifsrs_elden_ring::{
+            character_sets::CharacterIdentity, network_sessions::NetworkSessionObservation,
+        };
+        let character = CharacterIdentity {
+            address: 1,
+            world_address: 2,
+            native_identifier: 3,
+            epoch: 1,
+        };
+        let session = |id, address| NetworkSessionObservation {
+            character,
+            holder_address: 4,
+            session_address: address,
+            native_identifier: id,
+        };
+        assert_eq!(
+            unique_sessions(vec![
+                session(0, 8),
+                session(5, 16),
+                session(5, 24),
+                session(7, 32)
+            ]),
+            vec![session(5, 16), session(7, 32)]
+        );
     }
 }

@@ -345,14 +345,7 @@ The release DLL is written to:
 target/x86_64-pc-windows-msvc/release/er_torrent_skin_slots.dll
 ```
 
-The FromSoftware.rs bindings are not vendored in this repository. Cargo fetches
-them from
-[`KamiyamaShiki0704/fromsoftware-rs`](https://github.com/KamiyamaShiki0704/fromsoftware-rs) at the exact
-ELDEN RING 1.17 / 1.17.1-compatible commit
-[`7d4fdd66eda1a35284c170feb4b07b058c005f8f`](https://github.com/KamiyamaShiki0704/fromsoftware-rs/commit/7d4fdd66eda1a35284c170feb4b07b058c005f8f).
-The first build therefore requires network access; subsequent builds can use
-Cargo's local cache. `Cargo.lock` records the same immutable revision, so builds
-do not follow changes to upstream `main`.
+This project uses the independently implemented private [ShikiFSRS](https://github.com/KamiyamaShiki0704/ShikiFSRS) SDK, pinned to `930f818431e72209b49d2e37265a1f8150fa5390`. The first build needs repository read access, Git credentials, and network access; subsequent builds can use Cargo's local cache. `Cargo.lock` records the same immutable revision. Offline validation covers ER WW 1.17.1; gameplay acceptance remains manual.
 
 ## Repository layout
 

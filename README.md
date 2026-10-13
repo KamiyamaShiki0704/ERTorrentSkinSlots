@@ -297,12 +297,7 @@ Release DLL 位于：
 target/x86_64-pc-windows-msvc/release/er_torrent_skin_slots.dll
 ```
 
-FromSoftware.rs bindings 不保存在本仓库中。Cargo 会从
-[`KamiyamaShiki0704/fromsoftware-rs`](https://github.com/KamiyamaShiki0704/fromsoftware-rs) 获取它们，并固定到
-包含 ELDEN RING 1.17 / 1.17.1 支持的提交
-[`7d4fdd66eda1a35284c170feb4b07b058c005f8f`](https://github.com/KamiyamaShiki0704/fromsoftware-rs/commit/7d4fdd66eda1a35284c170feb4b07b058c005f8f)。
-首次构建需要网络连接；之后 Cargo 可使用本机缓存。`Cargo.lock` 还会记录该提交的
-精确来源，因而不会随上游 `main` 分支变化。
+本项目使用独立实现的私有 [ShikiFSRS](https://github.com/KamiyamaShiki0704/ShikiFSRS) SDK，固定到提交 `930f818431e72209b49d2e37265a1f8150fa5390`。首次构建需要仓库读取权限、Git 凭据和网络连接；之后可以使用 Cargo 本地缓存。`Cargo.lock` 记录同一不可变版本。当前离线验证仅覆盖 ER WW 1.17.1，游戏内行为仍需人工验收。
 
 ## 仓库结构
 
@@ -321,3 +316,9 @@ FromSoftware.rs bindings 不保存在本仓库中。Cargo 会从
 
 本项目代码以 [MIT License](LICENSE) 发布。Cargo 获取的第三方依赖保留其原始
 许可，详情见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## Building with private ShikiFSRS
+
+Cargo pins `KamiyamaShiki0704/ShikiFSRS` to `930f818431e72209b49d2e37265a1f8150fa5390`. This SDK repository is private: the build account needs repository read access and Git credentials. `.cargo/config.toml` enables Git CLI fetching; no token is stored in this repository.
+
+The migration was checked offline against ER WW 1.17.1 (EXE 2.7.1.0). Native engine ownership, phase/lifetime requirements and unexecuted gameplay behavior remain experimental and require manual acceptance. Existing ignored game/asset fixtures were not executed.

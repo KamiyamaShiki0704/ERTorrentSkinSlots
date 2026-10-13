@@ -7,11 +7,15 @@ use std::{
     },
 };
 
-use eldenring::cs::CSEventFlagMan;
-use fromsoftware_shared::FromStatic;
 use ilhook::x64::{CallbackOption, HookFlags, Registers, hook_closure_retn};
+use shikifsrs_elden_ring::Ww171File;
+use shikifsrs_runtime::{
+    code_patches::{CodePatchSite, PreparedCodeSites},
+    memory::{AddressSpace, CurrentProcess},
+};
+use std::sync::Arc;
 
-use crate::{catalog::SlotCatalog, logging, profile::Er117Profile, state::LocalSelection};
+use crate::{catalog::SlotCatalog, logging, profile::Er117Profile};
 
 static CATALOG: OnceLock<SlotCatalog> = OnceLock::new();
 static LOCAL_SELECTOR: AtomicU8 = AtomicU8::new(0);
@@ -29,6 +33,58 @@ pub fn install(
     profile: &'static Er117Profile,
     catalog: SlotCatalog,
 ) -> Result<(), String> {
+    let bytes: Arc<[u8]> = std::fs::read(std::env::current_exe().map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?
+        .into();
+    let file = Ww171File::verify(&bytes).map_err(|e| e.to_string())?;
+    let objects = file
+        .bind_objects(&CurrentProcess, base as u64)
+        .map_err(|e| e.to_string())?;
+    let actual = objects.torrent_hook_sites().map_err(|e| e.to_string())?;
+    if (
+        actual.appearance_resolver,
+        actual.selector_refresh,
+        actual.spawn_return,
+        actual.assembly_return,
+    ) != (
+        (base + profile.appearance_resolver_rva) as u64,
+        (base + profile.selector_refresh_rva) as u64,
+        (base + profile.local_resolver_return_rva) as u64,
+        (base + profile.remote_resolver_return_rva) as u64,
+    ) {
+        return Err("owned hook sites differ from SDK current evidence".into());
+    }
+    let original_evidence = file.torrent_hook_evidence();
+    // Independently checked complete current-version classifier leaves.
+    let evidence = [
+        original_evidence[0],
+        original_evidence[1],
+        shikifsrs_runtime::profile::CodeRange {
+            rva: 0x3e5ea0,
+            length: 25,
+        },
+        shikifsrs_runtime::profile::CodeRange {
+            rva: 0xd43120,
+            length: 40,
+        },
+    ];
+    let sites = evidence.map(|evidence| CodePatchSite {
+        rva: evidence.rva,
+        evidence,
+        length: 14,
+    });
+    let prepared = PreparedCodeSites::prepare(file.file(), &CurrentProcess, base as u64, &sites)
+        .map_err(|e| e.to_string())?;
+    let mut pinned = windows::Win32::Foundation::HMODULE::default();
+    // SAFETY: FROM_ADDRESS uses this DLL function; PIN keeps owned hooks resident even on abort.
+    unsafe {
+        windows::Win32::System::LibraryLoader::GetModuleHandleExW(
+            0x5,
+            windows::core::PCWSTR(install as *const () as *const u16),
+            &mut pinned,
+        )
+    }
+    .map_err(|e| e.to_string())?;
     CATALOG
         .set(catalog)
         .map_err(|_| "slot catalog was already installed".to_string())?;
@@ -60,6 +116,30 @@ pub fn install(
     }
     .map_err(|error| format!("selector refresh hook install failed: {error:?}"))?;
 
+    let declarations = sites
+        .iter()
+        .map(|site| {
+            let mut bytes = vec![0; site.length];
+            CurrentProcess
+                .read_exact(base as u64 + u64::from(site.rva), &mut bytes)
+                .map_err(|e| e.to_string())?;
+            if bytes[0] != 0xe9 && bytes[..6] != [0xff, 0x25, 0, 0, 0, 0] {
+                return Err("owned ilhook redirect encoding differs".to_string());
+            }
+            Ok((site.rva, bytes))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let prepared = prepared
+        .declare_replacements(&declarations)
+        .map_err(|e| e.to_string())?;
+    // SAFETY: Only these just-installed owned hooks, pinned DLL and retained trampolines.
+    // Installation quiescence/ABI remain experimental host obligations, no third-party patch.
+    let patches = Arc::new(unsafe { prepared.into_owned() });
+    crate::sdk::publish(crate::sdk::Context {
+        bytes,
+        base: base as u64,
+        patches,
+    })?;
     let _ = Box::leak(Box::new(resolver_hook));
     let _ = Box::leak(Box::new(refresh_hook));
     let _ = Box::leak(Box::new(recognition_hooks));
@@ -97,13 +177,10 @@ fn selector_refresh_hook(base: usize, profile: &Er117Profile, original: usize) -
         return usize::from(original_changed);
     };
 
-    let selector = match unsafe { CSEventFlagMan::instance() } {
-        Ok(manager) => catalog.select_by_flag(|flag| manager.virtual_memory_flag.get_flag(flag)),
-        Err(_) => return usize::from(original_changed),
+    let Some((selection, mirror_changed)) = crate::sdk::select(catalog) else {
+        return usize::from(original_changed);
     };
-    let selection = LocalSelection::new(selector);
     let previous = LOCAL_SELECTOR.swap(selection.selector, Ordering::AcqRel);
-    let mirror_changed = unsafe { write_vanilla_mirror(base, profile, selection.vanilla_mirror) };
     unsafe { crate::recovery_trace::observe(base, profile, selection.selector, "after-refresh") };
 
     if previous != selection.selector {
@@ -157,24 +234,6 @@ fn appearance_resolver_hook(
 
     let original: AppearanceResolverFn = unsafe { transmute(original) };
     unsafe { original(raw_selector) as u32 as usize }
-}
-
-unsafe fn write_vanilla_mirror(base: usize, profile: &Er117Profile, mirror: u8) -> bool {
-    let game_data_man = unsafe { *((base + profile.game_data_man_global_rva) as *const *mut u8) };
-    if game_data_man.is_null() {
-        return false;
-    }
-    let state = unsafe { *((game_data_man.add(8)) as *const *mut u8) };
-    if state.is_null() {
-        return false;
-    }
-    let destination = unsafe { state.add(profile.game_selector_offset) };
-    let previous = unsafe { *destination };
-    if previous == mirror {
-        return false;
-    }
-    unsafe { *destination = mirror };
-    true
 }
 
 #[cfg(test)]

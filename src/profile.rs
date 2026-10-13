@@ -1,13 +1,11 @@
 use std::mem::size_of;
 
-use fromsoftware_shared::game_version::{GameVersion, LANG_ID_EN};
-use pelite::pe64::PeView;
 use windows::Win32::System::LibraryLoader::GetModuleHandleA;
 
 pub const PROFILE: Er117Profile = Er117Profile {
-    name: "WW 2.7.0.0",
+    name: "WW 2.7.1.0",
     selector_refresh_rva: 0x00AF_EEA0,
-    appearance_resolver_rva: 0x00D4_23B0,
+    appearance_resolver_rva: 0x00D4_2420,
     game_data_man_global_rva: 0x03D6_1F98,
     game_selector_offset: 0x960,
     local_resolver_return_rva: 0x0050_D740,
@@ -15,15 +13,10 @@ pub const PROFILE: Er117Profile = Er117Profile {
     resolver_call_rvas: [0x0040_34AD, 0x0040_43EA, 0x0050_D73B],
     official_table_rva: 0x02BB_5028,
     character_classifier_rva: 0x003E_5EA0,
-    appearance_classifier_rva: 0x00D4_30B0,
+    appearance_classifier_rva: 0x00D4_3120,
 };
 
-pub const PROFILE_1171: Er117Profile = Er117Profile {
-    name: "WW 2.7.1.0",
-    appearance_resolver_rva: 0x00D4_2420,
-    appearance_classifier_rva: 0x00D4_3120,
-    ..PROFILE
-};
+pub const PROFILE_1171: Er117Profile = PROFILE;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Er117Profile {
@@ -40,60 +33,19 @@ pub struct Er117Profile {
     pub appearance_classifier_rva: usize,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum SupportedExe {
-    Ww270,
-    Ww271,
-}
-
-impl GameVersion for SupportedExe {
-    const NAME: &'static str = "elden ring";
-
-    fn from_lang_version(lang_id: u16, version: &str) -> Option<Self> {
-        match (lang_id, version) {
-            (LANG_ID_EN, "2.7.0.0") => Some(Self::Ww270),
-            (LANG_ID_EN, "2.7.1.0") => Some(Self::Ww271),
-            _ => None,
-        }
-    }
-}
-
 pub fn detect() -> Result<(usize, &'static Er117Profile), String> {
     let module = unsafe { GetModuleHandleA(None) }
         .map_err(|error| format!("GetModuleHandleA(None) failed: {error:?}"))?;
     let base = module.0 as usize;
-    let image = unsafe { PeView::module(base as *const u8) };
-    let version = SupportedExe::detect(&image)
-        .map_err(|error| format!("unsupported Elden Ring executable: {error}"))?;
-    let profile = match version {
-        SupportedExe::Ww270 => &PROFILE,
-        SupportedExe::Ww271 => &PROFILE_1171,
-    };
+    let bytes = std::fs::read(std::env::current_exe().map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    shikifsrs_elden_ring::Ww171File::verify(&bytes).map_err(|e| e.to_string())?;
+    let profile = &PROFILE;
     validate(base, profile)?;
     Ok((base, profile))
 }
 
 pub fn validate(base: usize, profile: &Er117Profile) -> Result<(), String> {
-    let selector_signature: &[Option<u8>] = &[
-        Some(0x4C),
-        Some(0x8B),
-        Some(0xDC),
-        Some(0x55),
-        Some(0x48),
-        Some(0x83),
-        Some(0xEC),
-        Some(0x70),
-        Some(0x48),
-        Some(0x8B),
-        Some(0x05),
-        None,
-        None,
-        None,
-        None,
-        Some(0x48),
-        Some(0x33),
-        Some(0xC4),
-    ];
     let selector_1171_signature = [
         Some(0x40),
         Some(0x55),
@@ -117,11 +69,7 @@ pub fn validate(base: usize, profile: &Er117Profile) -> Result<(), String> {
         Some(0x24),
         Some(0x58),
     ];
-    let selector_signature = if profile.name == PROFILE_1171.name {
-        &selector_1171_signature[..]
-    } else {
-        selector_signature
-    };
+    let selector_signature = &selector_1171_signature[..];
     let resolver_signature: &[Option<u8>] = &[
         Some(0x80),
         Some(0xF9),
@@ -281,17 +229,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_verified_versions_are_accepted() {
-        assert_eq!(
-            SupportedExe::from_lang_version(LANG_ID_EN, "2.7.0.0"),
-            Some(SupportedExe::Ww270)
-        );
-        assert_eq!(
-            SupportedExe::from_lang_version(LANG_ID_EN, "2.7.1.0"),
-            Some(SupportedExe::Ww271)
-        );
-        assert!(SupportedExe::from_lang_version(LANG_ID_EN, "2.7.2.0").is_none());
-        assert!(SupportedExe::from_lang_version(0, "2.7.1.0").is_none());
+    fn exact_sdk_gate_rejects_unknown_file_without_loaded_access() {
+        assert!(shikifsrs_elden_ring::Ww171File::verify(&[]).is_err());
+        assert!(shikifsrs_elden_ring::Ww171File::verify(&[0u8; 4096]).is_err());
+        assert_eq!(PROFILE.name, "WW 2.7.1.0");
     }
 
     /// Run with ER_TEST_EXE pointing to a legally installed WW executable.
@@ -313,11 +254,8 @@ mod tests {
             let size = section.SizeOfRawData as usize;
             mapped[target..target + size].copy_from_slice(&bytes[source..source + size]);
         }
-        let view = PeView::from_bytes(&mapped).unwrap();
-        let profile = match SupportedExe::detect(&view).unwrap() {
-            SupportedExe::Ww270 => &PROFILE,
-            SupportedExe::Ww271 => &PROFILE_1171,
-        };
+        shikifsrs_elden_ring::Ww171File::verify(&bytes).unwrap();
+        let profile = &PROFILE;
         let base = mapped.as_ptr() as usize;
         validate(base, profile).unwrap();
         for offset in [
