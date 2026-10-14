@@ -32,8 +32,8 @@ name = "er_torrent_skin_slots"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-shikifsrs-elden-ring = { git = "https://github.com/KamiyamaShiki0704/ShikiFSRS.git", rev = "930f818431e72209b49d2e37265a1f8150fa5390" }
-shikifsrs-runtime = { git = "https://github.com/KamiyamaShiki0704/ShikiFSRS.git", rev = "930f818431e72209b49d2e37265a1f8150fa5390" }
+shikifsrs-elden-ring = { git = "https://github.com/KamiyamaShiki0704/ShikiFSRS.git", rev = "fb9f4524da1fb648e0a696f2d47aa08d3acf35cc" }
+shikifsrs-runtime = { git = "https://github.com/KamiyamaShiki0704/ShikiFSRS.git", rev = "fb9f4524da1fb648e0a696f2d47aa08d3acf35cc" }
 ilhook = { version = "2.3.0", features = ["x64"] }
 pelite.workspace = true
 windows.workspace = true
