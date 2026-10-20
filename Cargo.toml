@@ -3,8 +3,8 @@ resolver = "2"
 members = ["."]
 
 [workspace.dependencies]
-fromsoftware-shared = { path = "../fromsoftware-rs/crates/shared" }
-eldenring = { path = "../fromsoftware-rs/crates/eldenring" }
+fromsoftware-shared = { git = "https://github.com/KamiyamaShiki0704/fromsoftware-rs", rev = "dd7b5a1d71169a3d3cbdfc619ecd72be169f17d5" }
+eldenring = { git = "https://github.com/KamiyamaShiki0704/fromsoftware-rs", rev = "dd7b5a1d71169a3d3cbdfc619ecd72be169f17d5" }
 pelite = "0.10"
 
 [workspace.dependencies.windows]
