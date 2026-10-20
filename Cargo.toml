@@ -3,6 +3,8 @@ resolver = "2"
 members = ["."]
 
 [workspace.dependencies]
+fromsoftware-shared = { path = "../fromsoftware-rs/crates/shared" }
+eldenring = { path = "../fromsoftware-rs/crates/eldenring" }
 pelite = "0.10"
 
 [workspace.dependencies.windows]
@@ -32,8 +34,8 @@ name = "er_torrent_skin_slots"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-shikifsrs-elden-ring = { git = "https://github.com/KamiyamaShiki0704/ShikiFSRS.git", rev = "fb9f4524da1fb648e0a696f2d47aa08d3acf35cc" }
-shikifsrs-runtime = { git = "https://github.com/KamiyamaShiki0704/ShikiFSRS.git", rev = "fb9f4524da1fb648e0a696f2d47aa08d3acf35cc" }
+eldenring.workspace = true
+fromsoftware-shared.workspace = true
 ilhook = { version = "2.3.0", features = ["x64"] }
 pelite.workspace = true
 windows.workspace = true
